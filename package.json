@@ -1,0 +1,24 @@
+{
+  "name": "enigma-machine",
+  "version": "1.0.0",
+  "description": "Simulador da máquina Enigma em JavaScript (Node.js e Browser).",
+  "main": "enigma.js",
+  "scripts": {
+    "start": "live-server --open=index.html --port=3000",
+    "test": "echo \"Nenhum teste definido ainda\" && exit 0"
+  },
+  "keywords": [
+    "enigma",
+    "cryptography",
+    "simulator",
+    "machine",
+    "nodejs",
+    "browser"
+  ],
+  "author": "Gustavo Pereira",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}

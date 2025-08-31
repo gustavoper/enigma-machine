@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Enigma Machine Simulator</title>
+  <style>
+    :root{
+      --bg:#0f1220;--panel:#171a2b;--ink:#e6e9f2;--muted:#a9afc3;--acc:#5d8cff;--acc-2:#07d6a0;--border:#262a40;--shadow:rgba(0,0,0,.35)
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,"Noto Sans","Apple Color Emoji","Segoe UI Emoji";color:var(--ink);background:linear-gradient(180deg,#0e1120, #0b0f1d 45%, #0b0d18)}
+    .container{max-width:1100px;margin:48px auto;padding:0 20px}
+    header{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+    .logo{width:42px;height:42px;border-radius:12px;background:radial-gradient(120% 120% at 30% 20%,#1e2a52,#142147 40%,#0e1633 80%);box-shadow:0 8px 24px var(--shadow), inset 0 0 0 1px #2a355e, inset 0 -4px 18px rgba(93,140,255,.35)}
+    h1{font-size:clamp(22px,2.6vw,32px);margin:0}
+    .subtitle{color:var(--muted);font-size:14px}
+
+    .grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px}
+    @media (max-width: 900px){.grid{grid-template-columns:1fr}}
+
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid var(--border);border-radius:18px;box-shadow:0 10px 30px var(--shadow);padding:16px}
+    .card h2{font-size:16px;margin:0 0 12px;color:#cfd6eb}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+    label{font-size:12px;color:var(--muted)}
+    .field{flex:1;min-width:130px;display:flex;flex-direction:column;gap:6px}
+    select,input[type="text"],input[type="number"],textarea{width:100%;background:#0f1428;color:var(--ink);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:14px;outline:none}
+    textarea{min-height:160px;resize:vertical}
+    .pos-input{font-family:monospace;text-transform:uppercase;text-align:center}
+    .btns{display:flex;gap:10px;flex-wrap:wrap}
+    button{appearance:none;border:1px solid #2a375f;background:linear-gradient(180deg,#28386d,#24305f);color:#fff;border-radius:12px;padding:10px 14px;font-weight:600;font-size:14px;cursor:pointer;box-shadow:0 8px 18px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.04)}
+    button.secondary{background:linear-gradient(180deg,#18213e,#141a33);border-color:#2a314e}
+    button:active{transform:translateY(1px)}
+    .hint{font-size:12px;color:var(--muted)}
+    .kbd{display:inline-block;padding:.1rem .35rem;border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;background:#0f1428;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;color:#dfe7ff}
+    .status{font-family:ui-monospace,monospace;font-size:13px;color:#dfe7ff;background:#0f1428;border:1px solid var(--border);border-radius:12px;padding:8px 10px}
+    footer{margin-top:18px;color:var(--muted);font-size:12px;text-align:center}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border);border-radius:999px;background:#0f1428}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1>Enigma Machine Simulator</h1>
+        <div class="subtitle">Node.js + Browser • Rotors I–V • Reflectors B/C • Ringstellung • Plugboard • Double‑stepping</div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Plaintext / Ciphertext</h2>
+        <div class="row">
+          <div class="field">
+            <label for="inputText">Input</label>
+            <textarea id="inputText" placeholder="Type or paste text here…"></textarea>
+          </div>
+        </div>
+        <div class="btns">
+          <button id="btnEncrypt">Encrypt</button>
+          <button id="btnDecrypt" class="secondary">Decrypt (same process)</button>
+          <button id="btnSwap" class="secondary" title="Swap input/output">Swap ↔</button>
+          <span class="pill">Non‑letters: <label style="display:inline-flex;align-items:center;gap:6px"><input id="keepNonLetters" type="checkbox" checked> keep as‑is</label></span>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="field">
+            <label for="outputText">Output</label>
+            <textarea id="outputText" readonly placeholder="Result will appear here…"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <h2>Machine Settings</h2>
+        <div class="row">
+          <div class="field">
+            <label for="reflector">Reflector</label>
+            <select id="reflector"></select>
+          </div>
+          <div class="field">
+            <label for="plugboard">Plugboard pairs</label>
+            <input id="plugboard" type="text" placeholder="e.g. AO BJ CY DT..." />
+            <span class="hint">Up to 10 pairs, format: <span class="kbd">AB CD EF</span></span>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Rotor Left</label>
+            <select id="rotorL"></select>
+          </div>
+          <div class="field">
+            <label>Ring (1–26)</label>
+            <input id="ringL" type="number" min="1" max="26" value="1" />
+          </div>
+          <div class="field">
+            <label>Position (A–Z)</label>
+            <input id="posL" class="pos-input" maxlength="1" value="A" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Rotor Middle</label>
+            <select id="rotorM"></select>
+          </div>
+          <div class="field">
+            <label>Ring (1–26)</label>
+            <input id="ringM" type="number" min="1" max="26" value="1" />
+          </div>
+          <div class="field">
+            <label>Position (A–Z)</label>
+            <input id="posM" class="pos-input" maxlength="1" value="A" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Rotor Right</label>
+            <select id="rotorR"></select>
+          </div>
+          <div class="field">
+            <label>Ring (1–26)</label>
+            <input id="ringR" type="number" min="1" max="26" value="1" />
+          </div>
+          <div class="field">
+            <label>Position (A–Z)</label>
+            <input id="posR" class="pos-input" maxlength="1" value="A" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Preset</label>
+            <div class="btns">
+              <button id="btnPreset1940" class="secondary" title="Example preset">Load Example</button>
+              <button id="btnReset" class="secondary">Reset</button>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Rotor window</label>
+            <div class="status" id="rotorWindow">L: A • M: A • R: A</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      Encryption and decryption are identical: type your text, set the same configuration, and run either action.
+    </footer>
+  </div>
+
+<script>
+/* ================================
+   Enigma core (Node + Browser)
+   ================================ */
+(function(global){
+  const A = 'A'.charCodeAt(0);
+  const alpha = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+  const toIndex = c => c.charCodeAt(0)-A;
+  const mod26 = n => (n%26+26)%26;
+
+  // Rotor wirings (Enigma I)
+  const ROTORS = {
+    I:   { wiring: 'EKMFLGDQVZNTOWYHXUSPAIBRCJ', notch: 'Q' },
+    II:  { wiring: 'AJDKSIRUXBLHWTMCQGZNPYFVOE', notch: 'E' },
+    III: { wiring: 'BDFHJLCPRTXVZNYEIWGAKMUSQO', notch: 'V' },
+    IV:  { wiring: 'ESOVPZJAYQUIRHXLNFTGKDCMWB', notch: 'J' },
+    V:   { wiring: 'VZBRGITYUPSDNHLXAWMJQOFEK', notch: 'Z' },
+  };
+
+  const REFLECTORS = {
+    B: 'YRUHQSLDPXNGOKMIEBFZCWVJAT',
+    C: 'FVPJIAOYEDRZXWGCTKUQSBNMHL'
+  };
+
+  function parsePlugboard(str){
+    const pairs = (str||'').toUpperCase().trim().split(/\s+/).filter(Boolean);
+    const map = new Map();
+    for(const pair of pairs){
+      if(!/^([A-Z]{2})$/.test(pair)) continue;
+      const a = pair[0], b = pair[1];
+      if(a===b) continue;
+      if(map.has(a) || map.has(b)) continue; // prevent reuse
+      map.set(a,b); map.set(b,a);
+    }
+    return map;
+  }
+
+  class Rotor {
+    constructor(spec, ring=1, position='A'){
+      this.wiring = [...spec.wiring].map(c=>toIndex(c));
+      this.inverse = Array(26).fill(0);
+      for(let i=0;i<26;i++) this.inverse[this.wiring[i]] = i;
+      this.notch = toIndex(spec.notch);
+      this.ring = mod26((ring-1)); // 0..25
+      this.pos = toIndex(position);
+    }
+    atNotch(){ return this.pos === this.notch; }
+    step(){ this.pos = mod26(this.pos+1); }
+    // map forward R->L
+    forward(i){
+      return mod26(this.wiring[mod26(i + this.pos - this.ring)] - this.pos + this.ring);
+    }
+    // map back L->R
+    backward(i){
+      return mod26(this.inverse[mod26(i + this.pos - this.ring)] - this.pos + this.ring);
+    }
+  }
+
+  class Enigma {
+    constructor({rotors=['I','II','III'], rings=[1,1,1], positions=['A','A','A'], reflector='B', plugboard='' }={}){
+      this.setConfig({rotors, rings, positions, reflector, plugboard});
+    }
+    setConfig({rotors, rings, positions, reflector, plugboard}){
+      this.right = new Rotor(ROTORS[rotors[2]], rings[2], positions[2]);
+      this.middle= new Rotor(ROTORS[rotors[1]], rings[1], positions[1]);
+      this.left  = new Rotor(ROTORS[rotors[0]], rings[0], positions[0]);
+      this.reflector = [...REFLECTORS[reflector]].map(c=>toIndex(c));
+      this.plug = parsePlugboard(plugboard);
+      this._rotorNames = rotors;
+      this._reflectorName = reflector;
+    }
+    getWindow(){
+      const toChar = i=>String.fromCharCode(A + mod26(i));
+      return {L: toChar(this.left.pos), M: toChar(this.middle.pos), R: toChar(this.right.pos)};
+    }
+    resetPositions([L,M,R]){
+      this.left.pos = toIndex(L); this.middle.pos = toIndex(M); this.right.pos = toIndex(R);
+    }
+    plugSwap(i){
+      const c = alpha[i];
+      const s = this.plug.get(c);
+      return s? toIndex(s): i;
+    }
+    stepRotors(){
+      // Double‑stepping: if middle at notch, it steps and also forces left to step
+      const middleAtNotch = this.middle.atNotch();
+      const rightAtNotch = this.right.atNotch();
+      // Right rotor always steps
+      this.right.step();
+      if(middleAtNotch) this.middle.step();
+      if(middleAtNotch) this.left.step();
+      // Additionally, when right hits its notch, middle steps (next keypress behavior approximation)
+      if(rightAtNotch && !middleAtNotch) this.middle.step();
+    }
+    encodeChar(ch){
+      const idx = toIndex(ch);
+      this.stepRotors();
+      let i = this.plugSwap(idx);
+      i = this.right.forward(i);
+      i = this.middle.forward(i);
+      i = this.left.forward(i);
+      i = this.reflector[i];
+      i = this.left.backward(i);
+      i = this.middle.backward(i);
+      i = this.right.backward(i);
+      i = this.plugSwap(i);
+      return alpha[i];
+    }
+    process(text,{keepNonLetters=true}={}){
+      const out = [];
+      for(const ch of text.toUpperCase()){
+        if(ch>='A' && ch<='Z') out.push(this.encodeChar(ch));
+        else out.push(keepNonLetters? ch: '');
+      }
+      return out.join('');
+    }
+  }
+
+  // Export for Node or attach to window
+  if(typeof module !== 'undefined' && module.exports){ module.exports = { Enigma, ROTORS, REFLECTORS } }
+  else { global.Enigma = Enigma; global.ENIGMA_CONSTANTS = { ROTORS, REFLECTORS }; }
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+
+<script>
+// ================================
+// UI glue
+// ================================
+const rotorOptions = ['I','II','III','IV','V'];
+const reflectorOptions = ['B','C'];
+
+const els = {
+  input: document.getElementById('inputText'),
+  output: document.getElementById('outputText'),
+  plug: document.getElementById('plugboard'),
+  keep: document.getElementById('keepNonLetters'),
+  rotorL: document.getElementById('rotorL'),
+  ringL: document.getElementById('ringL'),
+  posL: document.getElementById('posL'),
+  rotorM: document.getElementById('rotorM'),
+  ringM: document.getElementById('ringM'),
+  posM: document.getElementById('posM'),
+  rotorR: document.getElementById('rotorR'),
+  ringR: document.getElementById('ringR'),
+  posR: document.getElementById('posR'),
+  reflector: document.getElementById('reflector'),
+  btnEncrypt: document.getElementById('btnEncrypt'),
+  btnDecrypt: document.getElementById('btnDecrypt'),
+  btnSwap: document.getElementById('btnSwap'),
+  btnPreset: document.getElementById('btnPreset1940'),
+  btnReset: document.getElementById('btnReset'),
+  rotorWindow: document.getElementById('rotorWindow'),
+};
+
+function fillSelect(select, opts){
+  select.innerHTML = opts.map(o=>`<option value="${o}">${o}</option>`).join('');
+}
+
+fillSelect(els.rotorL, rotorOptions);
+fillSelect(els.rotorM, rotorOptions);
+fillSelect(els.rotorR, rotorOptions);
+fillSelect(els.reflector, reflectorOptions);
+
+// defaults
+els.rotorL.value = 'I';
+els.rotorM.value = 'II';
+els.rotorR.value = 'III';
+els.reflector.value = 'B';
+els.plug.value = '';
+
+let machine = new Enigma({});
+
+function coerceAZ(input){
+  input.value = (input.value || 'A').toUpperCase().replace(/[^A-Z]/g,'').slice(0,1) || 'A';
+}
+[els.posL,els.posM,els.posR].forEach(inp=>inp.addEventListener('input',()=>coerceAZ(inp)));
+
+function readConfig(){
+  return {
+    rotors: [els.rotorL.value, els.rotorM.value, els.rotorR.value],
+    rings: [parseInt(els.ringL.value||'1'), parseInt(els.ringM.value||'1'), parseInt(els.ringR.value||'1')],
+    positions: [els.posL.value||'A', els.posM.value||'A', els.posR.value||'A'],
+    reflector: els.reflector.value,
+    plugboard: els.plug.value,
+  };
+}
+
+function applyConfig(){
+  const cfg = readConfig();
+  machine.setConfig(cfg);
+  updateWindow();
+}
+function updateWindow(){
+  const {L,M,R} = machine.getWindow();
+  els.rotorWindow.textContent = `L: ${L} • M: ${M} • R: ${R}`;
+}
+
+function run(direction){
+  // Enigma encrypts/decrypts identically. To allow multiple runs without losing start positions,
+  // we re-create a fresh machine and set initial window each click.
+  const cfg = readConfig();
+  machine = new Enigma(cfg);
+  machine.resetPositions(cfg.positions);
+  updateWindow();
+  const keep = !!els.keep.checked;
+  const input = els.input.value;
+  const output = machine.process(input, {keepNonLetters: keep});
+  els.output.value = output;
+}
+
+els.btnEncrypt.addEventListener('click',()=> run('enc'));
+els.btnDecrypt.addEventListener('click',()=> run('dec'));
+els.btnSwap.addEventListener('click',()=>{
+  const a = els.input.value; els.input.value = els.output.value; els.output.value = a;
+});
+
+els.btnPreset.addEventListener('click',()=>{
+  els.rotorL.value='I'; els.ringL.value=1; els.posL.value='A';
+  els.rotorM.value='II'; els.ringM.value=1; els.posM.value='A';
+  els.rotorR.value='III'; els.ringR.value=1; els.posR.value='A';
+  els.reflector.value='B';
+  els.plug.value='AV BS CG DL FU HZ IN KM OW RX';
+  applyConfig();
+});
+
+els.btnReset.addEventListener('click',()=>{
+  els.rotorL.value='I'; els.ringL.value=1; els.posL.value='A';
+  els.rotorM.value='II'; els.ringM.value=1; els.posM.value='A';
+  els.rotorR.value='III'; els.ringR.value=1; els.posR.value='A';
+  els.reflector.value='B';
+  els.plug.value='';
+  els.input.value=''; els.output.value='';
+  applyConfig();
+});
+
+[els.rotorL,els.rotorM,els.rotorR,els.ringL,els.ringM,els.ringR,els.posL,els.posM,els.posR,els.reflector,els.plug]
+  .forEach(el => el.addEventListener('change', applyConfig));
+
+applyConfig();
+</script>
+
+<!--
+================================
+Node.js usage (optional)
+--------------------------------
+1) Save this file as enigma.html (for browser).
+2) For Node, copy the Enigma core into enigma.js or require this file via a bundler.
+
+Example (Node):
+
+const { Enigma } = require('./enigma');
+const machine = new Enigma({
+  rotors:['I','II','III'],
+  rings:[1,1,1],
+  positions:['A','A','A'],
+  reflector:'B',
+  plugboard:'AV BS CG DL FU HZ IN KM OW RX'
+});
+const plain = 'HELLO WORLD';
+const cipher = machine.process(plain);
+console.log(cipher);
+
+// Reset positions to decrypt
+machine.resetPositions(['A','A','A']);
+console.log(machine.process(cipher));
+
+================================
+-->
+</body>
+</html>
